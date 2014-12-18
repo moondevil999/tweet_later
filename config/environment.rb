@@ -20,6 +20,18 @@ require "sinatra/reloader" if development?
 
 require 'erb'
 
+require 'omniauth-twitter'
+require 'twitter'
+
+configure do
+  enable :sessions
+end
+
+require 'sidekiq'
+require 'sidekiq/api'
+require 'redis'
+
+
 # Some helper constants for path-centric logic
 APP_ROOT = Pathname.new(File.expand_path('../../', __FILE__))
 
@@ -32,11 +44,15 @@ Dir[APP_ROOT.join('app', 'helpers', '*.rb')].each { |file| require file }
 # Set up the database and models
 require APP_ROOT.join('config', 'database')
 
-require 'twitter'
+if Sinatra::Application.development?
+  API_KEYS = YAML::load(File.open('config/api_keys.yaml'))
+  TWITTER_KEYS = API_KEYS['development']['TWITTER_KEY']
+  TWITTER_SECRETS = API_KEYS['development']['TWITTER_SECRET']
+else
+  TWITTER_KEYS = ENV['TWITTER_KEY']
+  TWITTER_SECRETS = ENV['TWITTER_SECRET']
+end
 
-$client = Twitter::REST::Client.new do |config|
-  config.consumer_key        = "eV08vMkVu1fxrladufmXk2NYq"
-  config.consumer_secret     = "Ddh4sVOBDH9Ubdjr1ardV3sVPOSMHY1mAzVTflbu8HHJC8fkkq"
-  config.access_token        = "2908549764-H2U2C81x4N5jYt6CBXyQYfBwU3Pr1gqR0aCikZK"
-  config.access_token_secret = "p69SvtXrrxzu0katqMoo2q46Ij3K6zX6TWEDqzvp3w8AW"
+use OmniAuth::Builder do
+  provider :twitter, TWITTER_KEYS, TWITTER_SECRETS
 end

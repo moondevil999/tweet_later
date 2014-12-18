@@ -21,20 +21,26 @@ class User < ActiveRecord::Base
   def fetch_tweets!
     tweets = client.user_timeline(self.nickname, count: 10)
     tweets.reverse.each do |t|
-      Tweet.create(user_id: self.id, text: t.text)
+      Tweet.create(user_id: self.id, body: t.text)
     end
   end
 
   def post_tweet(tweet)
-    client.update(tweet)
+    client.update(tweet.body)
     self.fetch_tweets!
+  end
+
+  def tweet(text,time)
+    tweet = Tweet.create!(body:text,user_id:self.id)
+    puts "Tweeting now 2"
+    TweetWorker.perform_at(time.to_i.seconds.from_now,tweet.id)
   end
 
   private
   def client
     Twitter::REST::Client.new do |config|
-    config.consumer_key        = "" #YOUR CONSUMER KEY
-    config.consumer_secret     = "" #YOUR CONSUMER KEY SECRET
+    config.consumer_key        = TWITTER_KEYS #YOUR CONSUMER KEY
+    config.consumer_secret     = TWITTER_SECRETS #YOUR CONSUMER KEY SECRET
     config.access_token        = self.access_token
     config.access_token_secret = self.access_token_secret
     end
